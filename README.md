@@ -1,4 +1,4 @@
-# ⚡ @laurohms/fast-worker-pool
+# ⚡ @xlauro/fast-worker-pool
 
 Um **Worker Pool** assíncrono de altíssima performance projetado especificamente para o runtime **Bun**. Permite gerenciar e delegar tarefas intensivas de CPU para threads em segundo plano utilizando a API nativa de **Web Workers** do Bun, aproveitando ao máximo a execução de arquivos TypeScript sem etapas de transpilação.
 
@@ -19,7 +19,7 @@ Ideal para criptografia, manipulação de dados em larga escala, compressão e q
 ## 📦 Instalação
 
 ```bash
-bun add @laurohms/fast-worker-pool
+bun add @xlauro/fast-worker-pool
 ```
 
 ---
@@ -33,7 +33,7 @@ Para utilizar o `fast-worker-pool`, você precisa de dois arquivos: o arquivo qu
 O Worker escuta mensagens contendo dados e responde de volta. No Bun, a tipagem nativa de Web Worker usa a variável global `self`.
 
 ```typescript
-import type { WorkerRequest, WorkerResponse } from '@laurohms/fast-worker-pool/src/types';
+import type { WorkerRequest, WorkerResponse } from '@xlauro/fast-worker-pool/src/types';
 
 declare var self: Worker;
 
@@ -75,7 +75,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest<InputType>>) => {
 Instancie o pool apontando para o arquivo do worker usando `import.meta.resolve` para que o Bun localize o caminho do módulo TypeScript de forma dinâmica.
 
 ```typescript
-import { WorkerPool } from '@laurohms/fast-worker-pool';
+import { WorkerPool } from '@xlauro/fast-worker-pool';
 
 // 1. Instancia o Pool (especificando os tipos de entrada e saída)
 const pool = new WorkerPool<{ base: number; exponent: number }, { result: number }>(
