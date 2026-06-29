@@ -1,22 +1,22 @@
 # ⚡ @laurohms/fast-worker-pool
 
-Um **Worker Pool** assíncrono de altíssima performance projetado especificamente para o runtime **Bun**. Permite gerenciar e delegar tarefas intensivas de CPU para threads em segundo plano utilizando a API nativa de **Web Workers** do Bun, aproveitando ao máximo a execução de arquivos TypeScript sem etapas de transpilação.
+A high-performance asynchronous **Worker Pool** specifically designed for the **Bun** runtime. It allows you to manage and delegate CPU-intensive tasks to background threads using Bun's native **Web Workers** API, taking full advantage of executing TypeScript files directly without transpilation steps.
 
-Ideal para criptografia, manipulação de dados em larga escala, compressão e qualquer processamento intensivo de CPU que possa bloquear a Event Loop principal da sua aplicação.
-
----
-
-## ✨ Características
-
-- 🎯 **Bun Native:** Aproveita o suporte nativo a TypeScript no ecossistema Bun, permitindo instanciar Workers apontando diretamente para arquivos `.ts`.
-- 🧬 **TypeScript Estrito:** Fortemente tipado com suporte a Generics para entrada e saída das tarefas (`WorkerPool<InputData, OutputData>`).
-- 🔄 **Fila de Espera FIFO (Producer-Consumer):** Quando todos os Workers estiverem ocupados, as novas tarefas são enfileiradas automaticamente e executadas sob demanda conforme as threads forem liberadas.
-- 🛡️ **Resiliência e Recuperação a Falhas:** Se uma thread travar ou disparar um erro não tratado, o erro é isolado e repassado para a Promise da tarefa específica, a thread com defeito é eliminada e uma nova é instanciada no lugar imediatamente para manter o Pool saudável.
-- 🧹 **Gerenciamento de Ciclo de Vida:** Controle fácil de desalocação e limpeza de memória usando o método `.destroy()`.
+Ideal for cryptography, large-scale data manipulation, compression, and any CPU-intensive processing that might block your application's main Event Loop.
 
 ---
 
-## 📦 Instalação
+## ✨ Features
+
+- 🎯 **Bun Native:** Leverages native TypeScript support in the Bun ecosystem, allowing you to instantiate Workers by pointing directly to `.ts` files.
+- 🧬 **Strict TypeScript:** Strongly typed with Generics support for task input and output (`WorkerPool<InputData, OutputData>`).
+- 🔄 **FIFO Queue (Producer-Consumer):** When all Workers are busy, new tasks are automatically queued and executed on demand as threads become available.
+- 🛡️ **Resilience and Fault Tolerance:** If a thread crashes or throws an unhandled error, the error is isolated and forwarded to the specific task's Promise, the faulty thread is terminated, and a new one is immediately instantiated to keep the Pool healthy.
+- 🧹 **Lifecycle Management:** Easy resource clean-up and memory deallocation using the `.destroy()` method.
+
+---
+
+## 📦 Installation
 
 ```bash
 bun add @laurohms/fast-worker-pool
@@ -24,20 +24,20 @@ bun add @laurohms/fast-worker-pool
 
 ---
 
-## 🚀 Guia Rápido (Quick Start)
+## 🚀 Quick Start
 
-Para utilizar o `fast-worker-pool`, você precisa de dois arquivos: o arquivo que define a lógica que rodará no **Worker** (segundo plano) e o script **Principal** (que consome o Pool).
+To use `fast-worker-pool`, you need two files: the file defining the logic that runs in the **Worker** (background) and the **Main** script (which consumes the Pool).
 
-### 1. Crie o arquivo do Worker (`src/my-worker.ts`)
+### 1. Create the Worker File (`src/my-worker.ts`)
 
-O Worker escuta mensagens contendo dados e responde de volta. No Bun, a tipagem nativa de Web Worker usa a variável global `self`.
+The Worker listens for messages containing data and responds back. In Bun, native Web Worker typing uses the global `self` variable.
 
 ```typescript
 import type { WorkerRequest, WorkerResponse } from '@laurohms/fast-worker-pool/src/types';
 
 declare var self: Worker;
 
-// Definindo o tipo de entrada (Input) e de saída (Output)
+// Define the input and output types
 type InputType = { base: number; exponent: number };
 type OutputType = { result: number };
 
@@ -47,17 +47,17 @@ self.onmessage = async (event: MessageEvent<WorkerRequest<InputType>>) => {
   try {
     const { base, exponent } = data;
     
-    // Processamento pesado (Exemplo: cálculo de potência)
+    // CPU-intensive processing (Example: power calculation)
     const power = Math.pow(base, exponent);
 
-    // Envia a resposta de sucesso com o id correspondente
+    // Send the success response with the corresponding id
     const response: WorkerResponse<OutputType> = {
       id,
       data: { result: power }
     };
     self.postMessage(response);
   } catch (error: any) {
-    // Envia o erro de volta para a thread principal rejeitar a Promise correspondente
+    // Send the error back to the main thread to reject the corresponding Promise
     const response: WorkerResponse<OutputType> = {
       id,
       error: {
@@ -70,22 +70,22 @@ self.onmessage = async (event: MessageEvent<WorkerRequest<InputType>>) => {
 };
 ```
 
-### 2. Crie o Script Principal (`src/index.ts`)
+### 2. Create the Main Script (`src/index.ts`)
 
-Instancie o pool apontando para o arquivo do worker usando `import.meta.resolve` para que o Bun localize o caminho do módulo TypeScript de forma dinâmica.
+Instantiate the pool pointing to the worker file using `import.meta.resolve` so that Bun dynamically resolves the TypeScript module path.
 
 ```typescript
 import { WorkerPool } from '@laurohms/fast-worker-pool';
 
-// 1. Instancia o Pool (especificando os tipos de entrada e saída)
+// 1. Instantiate the Pool (specifying input and output types)
 const pool = new WorkerPool<{ base: number; exponent: number }, { result: number }>(
   import.meta.resolve('./my-worker.ts'),
-  { size: 4 } // Cria 4 instâncias/threads em paralelo
+  { size: 4 } // Creates 4 parallel instances/threads
 );
 
-console.log(`Pool inicializado com ${pool.getPoolSize()} Workers.`);
+console.log(`Pool initialized with ${pool.getPoolSize()} Workers.`);
 
-// 2. Submete tarefas em paralelo
+// 2. Submit tasks in parallel
 const tasks = [
   { base: 2, exponent: 10 },
   { base: 5, exponent: 3 },
@@ -96,89 +96,89 @@ const tasks = [
 const promises = tasks.map(async (task, index) => {
   try {
     const res = await pool.run(task);
-    console.log(`Tarefa #${index + 1} Resolvida: ${task.base}^${task.exponent} = ${res.result}`);
+    console.log(`Task #${index + 1} Resolved: ${task.base}^${task.exponent} = ${res.result}`);
   } catch (err) {
-    console.error(`Tarefa #${index + 1} Falhou:`, err);
+    console.error(`Task #${index + 1} Failed:`, err);
   }
 });
 
-// Aguarda todas as execuções
+// Wait for all executions
 await Promise.all(promises);
 
-// 3. Destrói o pool limpando a memória e encerrando as threads ativas
+// 3. Destroy the pool, cleaning up memory and terminating active threads
 pool.destroy();
-console.log('Pool destruído com sucesso!');
+console.log('Pool destroyed successfully!');
 ```
 
 ---
 
-## ⚙️ Opções de Configuração
+## ⚙️ Configuration Options
 
-Ao instanciar o `WorkerPool`, você pode passar configurações no segundo parâmetro:
+When instantiating the `WorkerPool`, you can pass configuration options in the second parameter:
 
 ```typescript
 const pool = new WorkerPool(workerPath, options);
 ```
 
-| Propriedade | Tipo | Padrão | Descrição |
+| Property | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `size` | `number` | `navigator.hardwareConcurrency` | O número de threads de Worker a serem criadas. Se omitido, usará o número total de núcleos de CPU disponíveis no computador host. |
+| `size` | `number` | `navigator.hardwareConcurrency` | The number of Worker threads to create. If omitted, it will use the total number of CPU cores available on the host machine. |
 
-### Métodos Disponíveis na Classe
+### Available Methods
 
-- `run(data: InputData): Promise<OutputData>`: Envia dados de tarefa para o pool, retornando uma Promise com o resultado.
-- `getActiveWorkerCount(): number`: Retorna o número de Workers atualmente executando processamentos.
-- `getQueueLength(): number`: Retorna o número de tarefas que estão aguardando na fila FIFO.
-- `getPoolSize(): number`: Retorna o total de Workers instanciados no Pool.
-- `destroy(): void`: Encerra fisicamente todos os Workers ativos, limpa a fila e rejeita as Promises em andamento.
+- `run(data: InputData): Promise<OutputData>`: Dispatches task data to the pool, returning a Promise with the result.
+- `getActiveWorkerCount(): number`: Returns the number of Workers currently executing tasks.
+- `getQueueLength(): number`: Returns the number of tasks waiting in the FIFO queue.
+- `getPoolSize(): number`: Returns the total number of Workers instantiated in the Pool.
+- `destroy(): void`: Gracefully terminates all active Workers, clears the queue, and rejects any pending Promises.
 
 ---
 
-## 🧪 Desenvolvimento: Testes & Benchmarks
+## 🧪 Development: Tests & Benchmarks
 
-O repositório já vem preparado com testes e um script de benchmark automatizado.
+The repository is pre-configured with tests and an automated benchmark script.
 
-### Executar Testes Unitários
+### Run Unit Tests
 
-Executa a suite de testes no Bun que valida concorrência paralela, comportamento sob sobrecarga de fila FIFO, manipulação/isolamento de erros do worker e destruição de recursos.
+Runs the Bun test suite, validating parallel concurrency, behavior under FIFO queue overload, worker error handling/isolation, and resource destruction.
 
 ```bash
 bun test
 ```
 
-### Executar Benchmark de Performance
+### Run Performance Benchmark
 
-O benchmark compara o processamento de **50 tarefas intensivas** de criptografia bcrypt na Thread Principal (bloqueante) contra o `WorkerPool` utilizando a capacidade máxima de cores da sua CPU de forma paralela.
+The benchmark compares processing **50 CPU-intensive** bcrypt tasks on the Main Thread (blocking) versus the `WorkerPool` using the CPU's maximum core capacity in parallel.
 
 ```bash
 bun run benchmark
 ```
 
-_Exemplo de saída do benchmark:_
+_Example benchmark output:_
 ```text
 ====================================================
-📊 INICIANDO BENCHMARK: THREAD PRINCIPAL VS WORKER POOL
-- Tarefas Pesadas de CPU: 50
-- Custo do bcrypt (iterações/tarefa): 4
-- Cores de CPU Detectados: 8
+📊 STARTING BENCHMARK: MAIN THREAD VS WORKER POOL
+- CPU Heavy Tasks: 50
+- Bcrypt cost (iterations/task): 4
+- CPU Cores Detected: 8
 ====================================================
 
-➡️  Fase 1: Processando de forma SEQUENCIAL na Thread Principal...
-⏱  Concluído em: 382.10 ms
+➡️  Phase 1: Processing SEQUENTIALLY on Main Thread...
+⏱  Completed in: 382.10 ms
 
-➡️  Fase 2: Processando em PARALELO com WorkerPool (8 threads)...
-⏱  Concluído em: 76.50 ms
+➡️  Phase 2: Processing in PARALLEL with WorkerPool (8 threads)...
+⏱  Completed in: 76.50 ms
 
-====================== RESULTADOS ======================
-Tempo Sequencial (Thread Principal):  382.10 ms
-Tempo Paralelo (Worker Pool):        76.50 ms
-Fator de Aceleração (Speedup):       4.99x
-Melhoria de Performance:            80.00% mais rápido
+====================== RESULTS ======================
+Sequential Time (Main Thread):  382.10 ms
+Parallel Time (Worker Pool):    76.50 ms
+Speedup Factor:                 4.99x
+Performance Improvement:        80.00% faster
 ========================================================
 ```
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Este projeto está licenciado sob a licença [MIT](LICENSE).
+This project is licensed under the [MIT](LICENSE) license.

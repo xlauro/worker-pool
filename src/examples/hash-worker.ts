@@ -12,30 +12,30 @@ interface WorkerOutput {
   iterations: number;
 }
 
-// Escuta as requisições enviadas da thread principal do pool
+// Listens to requests sent from the main pool thread
 self.onmessage = async (event: MessageEvent<WorkerRequest<WorkerInput>>) => {
   const { id, data } = event.data;
 
   try {
     const { text, iterations } = data;
 
-    // Simulação de erro forçado para validação de erros
+    // Simulated forced error for error handling validation
     if (text === 'FORCE_ERROR') {
-      throw new Error('Erro simulado disparado de dentro do worker!');
+      throw new Error('Simulated error thrown from inside the worker!');
     }
 
     let currentHash = text;
 
-    // Simula carga pesada de CPU rodando hashing bcrypt em loop síncrono.
-    // Usamos Bun.password.hashSync para forçar o consumo de CPU na thread separada.
+    // Simulates heavy CPU load by running bcrypt hashing in a synchronous loop.
+    // We use Bun.password.hashSync to force CPU consumption on the separate thread.
     for (let i = 0; i < iterations; i++) {
       currentHash = Bun.password.hashSync(currentHash, {
         algorithm: 'bcrypt',
-        cost: 4 // Custo baixo para o exemplo rodar rápido, mas ainda pesado para a CPU
+        cost: 4 // Low cost to run quickly in the example, but still CPU intensive
       });
     }
 
-    // Prepara a resposta de sucesso
+    // Prepares the success response
     const response: WorkerResponse<WorkerOutput> = {
       id,
       data: {
@@ -46,7 +46,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest<WorkerInput>>) => {
 
     self.postMessage(response);
   } catch (error: any) {
-    // Captura o erro e envia de volta de forma estruturada para rejeitar a Promise principal
+    // Captures the error and sends it back in a structured format to reject the main Promise
     const response: WorkerResponse<WorkerOutput> = {
       id,
       error: {

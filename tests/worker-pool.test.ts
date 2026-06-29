@@ -1,7 +1,7 @@
 import { describe, test, expect, afterEach } from 'bun:test';
 import { WorkerPool } from '../src/worker-pool';
 
-// Resolução do worker de teste
+// Resolution of the test worker path
 const workerPath = import.meta.resolve('../src/examples/hash-worker.ts');
 
 describe('WorkerPool Tests', () => {
@@ -14,7 +14,7 @@ describe('WorkerPool Tests', () => {
     }
   });
 
-  test('deve executar tarefas pesadas em paralelo com sucesso', async () => {
+  test('should execute heavy tasks in parallel successfully', async () => {
     pool = new WorkerPool<{ text: string; iterations: number }, { hash: string }>(
       workerPath,
       { size: 2 }
@@ -33,8 +33,8 @@ describe('WorkerPool Tests', () => {
     expect(res2.hash.length).toBeGreaterThan(0);
   });
 
-  test('deve enfileirar tarefas na fila FIFO se o pool estiver lotado', async () => {
-    // Apenas 1 worker para garantir saturação
+  test('should queue tasks in the FIFO queue if the pool is full', async () => {
+    // Only 1 worker to ensure saturation
     pool = new WorkerPool<{ text: string; iterations: number }, { hash: string }>(
       workerPath,
       { size: 1 }
@@ -42,13 +42,13 @@ describe('WorkerPool Tests', () => {
 
     expect(pool.getPoolSize()).toBe(1);
 
-    // Submete uma tarefa pesada de forma assíncrona
+    // Submits a heavy task asynchronously
     const p1 = pool.run({ text: 'long_task', iterations: 10 });
     
-    // Submete uma segunda tarefa que DEVE ir para a fila imediatamente
+    // Submits a second task that MUST go to the queue immediately
     const p2 = pool.run({ text: 'queued_task', iterations: 2 });
 
-    // Verifica se os contadores batem com o comportamento esperado
+    // Verifies if the counters match the expected behavior
     expect(pool.getActiveWorkerCount()).toBe(1);
     expect(pool.getQueueLength()).toBe(1);
 
@@ -60,30 +60,30 @@ describe('WorkerPool Tests', () => {
     expect(pool.getQueueLength()).toBe(0);
   });
 
-  test('deve tratar erros internos do worker sem travar o pool e se recuperar', async () => {
+  test('should handle worker internal errors without crashing the pool and recover', async () => {
     pool = new WorkerPool<{ text: string; iterations: number }, { hash: string }>(
       workerPath,
       { size: 2 }
     );
 
-    // Dispara tarefa com falha
+    // Dispatches failing task
     const pError = pool.run({ text: 'FORCE_ERROR', iterations: 1 });
-    // Dispara tarefa paralela de sucesso
+    // Dispatches parallel successful task
     const pSuccess = pool.run({ text: 'success_task', iterations: 2 });
 
-    // A tarefa de erro deve falhar e a promise ser rejeitada
-    expect(pError).rejects.toThrow('Erro simulado disparado de dentro do worker!');
+    // The error task should fail and the promise be rejected
+    expect(pError).rejects.toThrow('Simulated error thrown from inside the worker!');
 
-    // A tarefa de sucesso deve terminar normalmente
+    // The successful task should finish normally
     const successRes = await pSuccess;
     expect(successRes.hash).toBeDefined();
 
-    // O pool deve se recuperar e aceitar novas requisições perfeitamente
+    // The pool should recover and accept new requests perfectly
     const pNew = await pool.run({ text: 'recovery_task', iterations: 1 });
     expect(pNew.hash).toBeDefined();
   });
 
-  test('deve encerrar o pool limpando as tarefas pendentes na fila e ativas', async () => {
+  test('should destroy the pool clearing pending and active tasks', async () => {
     pool = new WorkerPool<{ text: string; iterations: number }, { hash: string }>(
       workerPath,
       { size: 2 }
@@ -91,25 +91,25 @@ describe('WorkerPool Tests', () => {
 
     const p1 = pool.run({ text: 'kill_1', iterations: 10 });
     const p2 = pool.run({ text: 'kill_2', iterations: 10 });
-    const p3 = pool.run({ text: 'kill_3', iterations: 10 }); // Fica na fila
+    const p3 = pool.run({ text: 'kill_3', iterations: 10 }); // Stays in the queue
 
     expect(pool.getActiveWorkerCount()).toBe(2);
     expect(pool.getQueueLength()).toBe(1);
 
-    // Destrói o pool no meio da execução
+    // Destroys the pool in the middle of execution
     pool.destroy();
 
-    // Todas as promises em andamento devem ser rejeitadas
-    expect(p1).rejects.toThrow('WorkerPool foi destruído');
-    expect(p2).rejects.toThrow('WorkerPool foi destruído');
-    expect(p3).rejects.toThrow('WorkerPool foi destruído');
+    // All running promises should be rejected
+    expect(p1).rejects.toThrow('WorkerPool was destroyed');
+    expect(p2).rejects.toThrow('WorkerPool was destroyed');
+    expect(p3).rejects.toThrow('WorkerPool was destroyed');
 
     expect(pool.getActiveWorkerCount()).toBe(0);
     expect(pool.getQueueLength()).toBe(0);
 
-    // Tentar executar tarefas após a destruição deve falhar imediatamente
+    // Attempting to run tasks after destruction should fail immediately
     expect(pool.run({ text: 'late_task', iterations: 1 })).rejects.toThrow(
-      'Não é possível submeter tarefas. O WorkerPool foi destruído.'
+      'Cannot submit tasks. The WorkerPool has been destroyed.'
     );
   });
 });

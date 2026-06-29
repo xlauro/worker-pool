@@ -1,57 +1,57 @@
 import { WorkerPool } from '../worker-pool';
 
-// Resolve o caminho do worker de forma segura usando import.meta.resolve
+// Securely resolve the worker path using import.meta.resolve
 const workerPath = import.meta.resolve('./hash-worker.ts');
 
 async function main() {
   console.log('====================================================');
-  console.log('🚀 Iniciando Demonstração do Fast Worker Pool');
+  console.log('🚀 Starting Fast Worker Pool Demonstration');
   console.log('====================================================');
 
-  // Inicializa o pool com tamanho fixo de 3 workers
+  // Initialize the pool with a fixed size of 3 workers
   const poolSize = 3;
   const pool = new WorkerPool<{ text: string; iterations: number }, { hash: string; iterations: number }>(
     workerPath,
     { size: poolSize }
   );
 
-  console.log(`✔ WorkerPool criado com ${pool.getPoolSize()} workers ativos.`);
-  console.log(`✔ Capacidade máxima paralela: ${poolSize} threads.`);
+  console.log(`✔ WorkerPool created with ${pool.getPoolSize()} active workers.`);
+  console.log(`✔ Maximum parallel capacity: ${poolSize} threads.`);
   console.log('----------------------------------------------------');
 
-  // Lista de tarefas contendo textos normais e uma tarefa com FORCE_ERROR para simular erro
+  // List of tasks containing normal texts and one task with FORCE_ERROR to simulate failure
   const tasks = [
     { text: 'antigravity_master_1', iterations: 10 },
     { text: 'antigravity_master_2', iterations: 10 },
-    { text: 'FORCE_ERROR', iterations: 1 }, // Esta tarefa irá falhar no worker
+    { text: 'FORCE_ERROR', iterations: 1 }, // This task will fail in the worker
     { text: 'antigravity_master_4', iterations: 10 },
     { text: 'antigravity_master_5', iterations: 10 },
     { text: 'antigravity_master_6', iterations: 10 },
   ];
 
-  console.log(`Disparando ${tasks.length} tarefas concorrentes...`);
+  console.log(`Dispatching ${tasks.length} concurrent tasks...`);
 
-  // Intervalo periódico para exibir o monitoramento do pool durante a execução
+  // Periodic interval to display pool metrics during execution
   const monitor = setInterval(() => {
     console.log(
-      `[Monitor] Workers Ativos: ${pool.getActiveWorkerCount()} | Fila de Espera FIFO: ${pool.getQueueLength()}`
+      `[Monitor] Active Workers: ${pool.getActiveWorkerCount()} | FIFO Queue Length: ${pool.getQueueLength()}`
     );
   }, 150);
 
-  // Executa todas em paralelo usando Promise.all
+  // Execute all in parallel using Promise.all
   const promises = tasks.map(async (task, index) => {
     try {
-      console.log(`[Task ${index + 1}] Submetendo para o Pool (text: "${task.text}")`);
+      console.log(`[Task ${index + 1}] Submitting to Pool (text: "${task.text}")`);
       const start = performance.now();
       const result = await pool.run(task);
       const elapsed = (performance.now() - start).toFixed(1);
       
       console.log(
-        `[Task ${index + 1}] ✅ Resolvida em ${elapsed}ms -> Hash: ${result.hash.slice(0, 30)}...`
+        `[Task ${index + 1}] ✅ Resolved in ${elapsed}ms -> Hash: ${result.hash.slice(0, 30)}...`
       );
       return result;
     } catch (error: any) {
-      console.log(`[Task ${index + 1}] ❌ Rejeitada com Erro -> "${error.message}"`);
+      console.log(`[Task ${index + 1}] ❌ Rejected with Error -> "${error.message}"`);
       return null;
     }
   });
@@ -60,11 +60,11 @@ async function main() {
 
   clearInterval(monitor);
   console.log('----------------------------------------------------');
-  console.log('Todos os jobs concorrentes foram finalizados.');
+  console.log('All concurrent jobs have finished.');
   
-  // Limpa o pool liberando os recursos
+  // Clean up the pool by releasing resources
   pool.destroy();
-  console.log('🧹 WorkerPool destruído e instâncias limpas.');
+  console.log('🧹 WorkerPool destroyed and instances cleaned.');
   console.log('====================================================');
 }
 

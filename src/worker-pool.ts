@@ -7,9 +7,9 @@ import type {
 } from './types';
 
 /**
- * Classe principal que gerencia o Pool de Workers.
- * Implementa o padrão de projeto Producer-Consumer para gerenciar uma fila FIFO
- * de tarefas assíncronas concorrentes rodando em threads nativas do Bun.
+ * Main class that manages the Worker Pool.
+ * Implements the Producer-Consumer design pattern to manage a FIFO queue
+ * of concurrent asynchronous tasks running on native Bun threads.
  */
 export class WorkerPool<InputData = any, OutputData = any> {
   private readonly workerPath: string | URL;
@@ -27,27 +27,27 @@ export class WorkerPool<InputData = any, OutputData = any> {
   private taskCounter = 0;
 
   /**
-   * Inicializa o Worker Pool.
+   * Initializes the Worker Pool.
    * 
-   * @param workerPath Caminho absoluto ou URL do script do Worker (ex: resolvido via `import.meta.resolve("./worker.ts")`).
-   * @param options Configurações adicionais para o Pool, como o número de threads.
+   * @param workerPath Absolute path or URL of the Worker script (e.g., resolved via `import.meta.resolve("./worker.ts")`).
+   * @param options Additional configuration for the Pool, such as the number of threads.
    */
   constructor(workerPath: string | URL, options?: WorkerPoolOptions) {
     this.workerPath = workerPath;
     
-    // Determina o tamanho do pool com base no hardware do host se não fornecido
+    // Determines the pool size based on host hardware if not provided
     const concurrency = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4;
     this.size = options?.size ?? concurrency ?? 4;
 
     if (this.size <= 0) {
-      throw new Error('O tamanho do pool de workers deve ser um número inteiro positivo.');
+      throw new Error('Worker pool size must be a positive integer.');
     }
 
     this.initializeWorkers();
   }
 
   /**
-   * Cria e pré-aloca a quantidade de Workers configurada no pool.
+   * Creates and pre-allocates the configured number of Workers in the pool.
    */
   private initializeWorkers(): void {
     for (let i = 0; i < this.size; i++) {
@@ -56,7 +56,7 @@ export class WorkerPool<InputData = any, OutputData = any> {
   }
 
   /**
-   * Instancia um Worker individual e define seus manipuladores de eventos e erros.
+   * Instantiates an individual Worker and defines its event and error handlers.
    */
   private createWorkerInstance(index: number): WorkerInstance {
     const worker = new Worker(this.workerPath);
@@ -67,14 +67,14 @@ export class WorkerPool<InputData = any, OutputData = any> {
       activeTaskId: null,
     };
 
-    // Escuta retornos normais de processamento do Worker
+    // Listens to normal processing results from the Worker
     worker.onmessage = (event: MessageEvent<WorkerResponse<OutputData>>) => {
       if (this.isDestroyed) return;
 
       const { id, data, error } = event.data;
       const pending = this.pendingTasks.get(id);
 
-      // Marca o worker como ocioso assim que o processamento termina
+      // Marks the worker as idle as soon as processing finishes
       if (instance.activeTaskId === id) {
         instance.status = 'idle';
         instance.activeTaskId = null;
@@ -87,38 +87,38 @@ export class WorkerPool<InputData = any, OutputData = any> {
         } else if (data !== undefined) {
           pending.resolve(data);
         } else {
-          pending.reject(new Error('O Worker retornou sucesso sem dados.'));
+          pending.reject(new Error('Worker returned success but without data.'));
         }
       }
 
-      // Processa a próxima tarefa enfileirada, se houver
+      // Processes the next queued task, if any
       this.processQueue();
     };
 
-    // Escuta erros inesperados disparados internamente na thread do Worker
+    // Listens to unexpected errors thrown internally inside the Worker thread
     worker.onerror = (errorEvent: ErrorEvent) => {
       if (this.isDestroyed) return;
 
-      // Rejeita a tarefa ativa rodando nesse worker, caso exista
+      // Rejects the active task running on this worker, if any
       if (instance.activeTaskId) {
         const pending = this.pendingTasks.get(instance.activeTaskId);
         if (pending) {
           this.pendingTasks.delete(instance.activeTaskId);
           pending.reject(
             new Error(
-              errorEvent.message || 'Worker falhou inesperadamente com um erro interno.'
+              errorEvent.message || 'Worker failed unexpectedly with an internal error.'
             )
           );
         }
       }
 
-      // Termina a instância antiga problemática por segurança e limpa memória
+      // Terminates the problematic old instance for safety and cleans memory
       worker.terminate();
 
-      // Regenera o Worker no mesmo slot para restaurar a capacidade do pool
+      // Regenerates the Worker in the same slot to restore pool capacity
       this.workers[index] = this.createWorkerInstance(index);
 
-      // Tenta processar o fluxo da fila no novo Worker
+      // Attempts to process the queue with the new Worker
       this.processQueue();
     };
 
@@ -126,40 +126,40 @@ export class WorkerPool<InputData = any, OutputData = any> {
   }
 
   /**
-   * Envia uma tarefa para processamento no pool.
-   * Se houver um Worker livre, a tarefa é iniciada imediatamente. Caso contrário,
-   * ela entra na fila FIFO de forma transparente e aguarda liberação de recursos.
+   * Submits a task to the pool for processing.
+   * If there is an idle Worker, the task starts immediately. Otherwise,
+   * it transparently enters the FIFO queue and waits for resources to be freed.
    * 
-   * @param data Dados de entrada da tarefa a serem passados para o Worker.
-   * @returns Uma Promise que resolve com o resultado gerado pelo Worker ou rejeita em caso de erro.
+   * @param data Input data of the task to be passed to the Worker.
+   * @returns A Promise that resolves with the result generated by the Worker or rejects in case of error.
    */
   public run(data: InputData): Promise<OutputData> {
     if (this.isDestroyed) {
       return Promise.reject(
-        new Error('Não é possível submeter tarefas. O WorkerPool foi destruído.')
+        new Error('Cannot submit tasks. The WorkerPool has been destroyed.')
       );
     }
 
-    // Cria um identificador único seguro para esta execução de tarefa
+    // Creates a secure unique identifier for this task execution
     const id = `task-${++this.taskCounter}-${Math.random().toString(36).substring(2, 9)}`;
 
     return new Promise<OutputData>((resolve, reject) => {
-      // Procura por um Worker ocioso
+      // Looks for an idle Worker
       const idleWorker = this.workers.find((w) => w.status === 'idle');
 
       if (idleWorker) {
-        // Vincula a promise ativa e inicia o processamento no Worker
+        // Binds the active promise and starts processing in the Worker
         this.pendingTasks.set(id, { resolve, reject });
         this.dispatchTask(idleWorker, id, data);
       } else {
-        // Enfileira a tarefa (padrão Producer-Consumer)
+        // Enqueues the task (Producer-Consumer pattern)
         this.queue.push({ id, data, resolve, reject });
       }
     });
   }
 
   /**
-   * Envia a mensagem com os dados de tarefa para o Worker específico.
+   * Sends the message with the task data to the specific Worker.
    */
   private dispatchTask(instance: WorkerInstance, id: string, data: InputData): void {
     instance.status = 'busy';
@@ -170,7 +170,7 @@ export class WorkerPool<InputData = any, OutputData = any> {
   }
 
   /**
-   * Consome itens da fila FIFO e envia para os Workers conforme fiquem disponíveis.
+   * Consumes items from the FIFO queue and dispatches them to Workers as they become available.
    */
   private processQueue(): void {
     if (this.isDestroyed || this.queue.length === 0) return;
@@ -178,7 +178,7 @@ export class WorkerPool<InputData = any, OutputData = any> {
     const idleWorker = this.workers.find((w) => w.status === 'idle');
     if (!idleWorker) return;
 
-    // Extrai o primeiro item da fila FIFO
+    // Extracts the first item from the FIFO queue
     const nextTask = this.queue.shift();
     if (nextTask) {
       const { id, data, resolve, reject } = nextTask;
@@ -188,51 +188,51 @@ export class WorkerPool<InputData = any, OutputData = any> {
   }
 
   /**
-   * Obtém a quantidade atual de workers em processamento ativo.
+   * Gets the current number of workers actively processing.
    */
   public getActiveWorkerCount(): number {
     return this.workers.filter((w) => w.status === 'busy').length;
   }
 
   /**
-   * Obtém a quantidade de tarefas paradas na fila de espera FIFO.
+   * Gets the number of tasks waiting in the FIFO queue.
    */
   public getQueueLength(): number {
     return this.queue.length;
   }
 
   /**
-   * Obtém o número total de Workers alocados no Pool.
+   * Gets the total number of Workers allocated in the Pool.
    */
   public getPoolSize(): number {
     return this.workers.length;
   }
 
   /**
-   * Encerra todos os Workers ativos e limpa a fila de tarefas remanescentes.
-   * Cancela todas as Promises em andamento rejeitando-as.
+   * Terminates all active Workers and clears the remaining task queue.
+   * Cancels all pending Promises by rejecting them.
    */
   public destroy(): void {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
 
-    // Cancela todas as tarefas que estavam na fila sem rodar
+    // Cancels all tasks that were in the queue without running
     for (const task of this.queue) {
       task.reject(
-        new Error('WorkerPool foi destruído antes que esta tarefa pudesse ser executada.')
+        new Error('WorkerPool was destroyed before this task could be executed.')
       );
     }
     this.queue.length = 0;
 
-    // Rejeita todas as tarefas que estavam ativas rodando nas threads
+    // Rejects all tasks that were actively running on the threads
     for (const [id, pending] of this.pendingTasks.entries()) {
       pending.reject(
-        new Error('WorkerPool foi destruído durante o processamento desta tarefa.')
+        new Error('WorkerPool was destroyed while processing this task.')
       );
     }
     this.pendingTasks.clear();
 
-    // Termina todos os workers fisicamente
+    // Physically terminates all workers
     for (const instance of this.workers) {
       instance.worker.terminate();
     }

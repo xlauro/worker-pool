@@ -1,23 +1,23 @@
 import { WorkerPool } from '../src/worker-pool';
 
-// Caminho absoluto do worker resolvido em tempo de execução
+// Absolute path of the worker resolved at runtime
 const workerPath = import.meta.resolve('../src/examples/hash-worker.ts');
 
 const TASKS_COUNT = 50;
-const HASH_ITERATIONS = 4; // quantidade de hashes por tarefa (ajuste fino para não demorar demais)
+const HASH_ITERATIONS = 4; // number of hashes per task (fine-tuned to not take too long)
 
 async function runBenchmark() {
   const cores = navigator.hardwareConcurrency || 4;
 
   console.log('====================================================');
-  console.log('📊 INICIANDO BENCHMARK: THREAD PRINCIPAL VS WORKER POOL');
-  console.log(`- Tarefas Pesadas de CPU: ${TASKS_COUNT}`);
-  console.log(`- Custo do bcrypt (iterações/tarefa): ${HASH_ITERATIONS}`);
-  console.log(`- Cores de CPU Detectados: ${cores}`);
+  console.log('📊 STARTING BENCHMARK: MAIN THREAD VS WORKER POOL');
+  console.log(`- CPU Heavy Tasks: ${TASKS_COUNT}`);
+  console.log(`- Bcrypt cost (iterations/task): ${HASH_ITERATIONS}`);
+  console.log(`- CPU Cores Detected: ${cores}`);
   console.log('====================================================\n');
 
-  // --- FASE 1: EXECUÇÃO SEQUENCIAL (THREAD PRINCIPAL) ---
-  console.log('➡️  Fase 1: Processando de forma SEQUENCIAL na Thread Principal...');
+  // --- PHASE 1: SEQUENTIAL EXECUTION (MAIN THREAD) ---
+  console.log('➡️  Phase 1: Processing SEQUENTIALLY on Main Thread...');
   const startSeq = performance.now();
   
   for (let i = 0; i < TASKS_COUNT; i++) {
@@ -31,10 +31,10 @@ async function runBenchmark() {
   }
   const endSeq = performance.now();
   const timeSeq = endSeq - startSeq;
-  console.log(`⏱  Concluído em: ${timeSeq.toFixed(2)} ms\n`);
+  console.log(`⏱  Completed in: ${timeSeq.toFixed(2)} ms\n`);
 
-  // --- FASE 2: EXECUÇÃO PARALELA (WORKER POOL) ---
-  console.log(`➡️  Fase 2: Processando em PARALELO com WorkerPool (${cores} threads)...`);
+  // --- PHASE 2: PARALLEL EXECUTION (WORKER POOL) ---
+  console.log(`➡️  Phase 2: Processing in PARALLEL with WorkerPool (${cores} threads)...`);
   
   const pool = new WorkerPool<{ text: string; iterations: number }, { hash: string; iterations: number }>(
     workerPath,
@@ -53,26 +53,26 @@ async function runBenchmark() {
     );
   }
 
-  // Aguarda todos os workers terminarem o processamento paralelo
+  // Waits for all workers to finish parallel processing
   await Promise.all(promises);
   
   const endPar = performance.now();
   const timePar = endPar - startPar;
   
-  // Limpa os recursos do Pool
+  // Cleans up the Pool resources
   pool.destroy();
   
-  console.log(`⏱  Concluído em: ${timePar.toFixed(2)} ms\n`);
+  console.log(`⏱  Completed in: ${timePar.toFixed(2)} ms\n`);
 
-  // --- COMPARAÇÃO DOS RESULTADOS ---
+  // --- RESULTS COMPARISON ---
   const improvement = ((timeSeq - timePar) / timeSeq) * 100;
   const speedup = timeSeq / timePar;
 
-  console.log('====================== RESULTADOS ======================');
-  console.log(`Tempo Sequencial (Thread Principal):  ${timeSeq.toFixed(2)} ms`);
-  console.log(`Tempo Paralelo (Worker Pool):        ${timePar.toFixed(2)} ms`);
-  console.log(`Fator de Aceleração (Speedup):       ${speedup.toFixed(2)}x`);
-  console.log(`Melhoria de Performance:            ${improvement.toFixed(2)}% mais rápido`);
+  console.log('====================== RESULTS ======================');
+  console.log(`Sequential Time (Main Thread):  ${timeSeq.toFixed(2)} ms`);
+  console.log(`Parallel Time (Worker Pool):    ${timePar.toFixed(2)} ms`);
+  console.log(`Speedup Factor:                 ${speedup.toFixed(2)}x`);
+  console.log(`Performance Improvement:        ${improvement.toFixed(2)}% faster`);
   console.log('========================================================');
 }
 

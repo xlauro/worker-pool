@@ -1,16 +1,16 @@
 /**
- * Opções de configuração para inicializar o WorkerPool.
+ * Configuration options for initializing the WorkerPool.
  */
 export interface WorkerPoolOptions {
   /**
-   * O número de workers a serem instanciados no pool.
-   * Se não for fornecido, utiliza `navigator.hardwareConcurrency` por padrão.
+   * The number of workers to instantiate in the pool.
+   * If not provided, defaults to `navigator.hardwareConcurrency`.
    */
   size?: number;
 }
 
 /**
- * Representa os detalhes de um erro ocorrido dentro de um worker.
+ * Represents the details of an error that occurred inside a worker.
  */
 export interface WorkerErrorDetails {
   message: string;
@@ -18,7 +18,7 @@ export interface WorkerErrorDetails {
 }
 
 /**
- * Estrutura da mensagem enviada da thread principal para o Worker.
+ * Structure of the message sent from the main thread to the Worker.
  */
 export interface WorkerRequest<InputData> {
   id: string;
@@ -26,7 +26,7 @@ export interface WorkerRequest<InputData> {
 }
 
 /**
- * Estrutura da mensagem de resposta enviada do Worker de volta para a thread principal.
+ * Structure of the response message sent from the Worker back to the main thread.
  */
 export interface WorkerResponse<OutputData> {
   id: string;
@@ -35,7 +35,7 @@ export interface WorkerResponse<OutputData> {
 }
 
 /**
- * Estrutura interna de uma tarefa enfileirada à espera de execução.
+ * Internal structure of a queued task waiting for execution.
  */
 export interface QueuedTask<InputData, OutputData> {
   id: string;
@@ -45,7 +45,7 @@ export interface QueuedTask<InputData, OutputData> {
 }
 
 /**
- * Metadados internos que controlam o ciclo de vida e estado de cada thread de Worker.
+ * Internal metadata controlling the lifecycle and state of each Worker thread.
  */
 export interface WorkerInstance {
   worker: Worker;
