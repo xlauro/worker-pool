@@ -1,0 +1,9 @@
+# Bun/Node
+node_modules/
+.bun-build/
+
+# IDEs/System
+.DS_Store
+.vscode/
+.idea/
+*.log

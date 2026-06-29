@@ -1,0 +1,26 @@
+{
+  "name": "@laurohms/fast-worker-pool",
+  "version": "1.0.0",
+  "description": "Um Worker Pool assíncrono de alta performance para o runtime Bun, gerenciando tarefas intensivas de CPU em paralelo com Web Workers nativos.",
+  "type": "module",
+  "main": "src/worker-pool.ts",
+  "module": "src/worker-pool.ts",
+  "scripts": {
+    "test": "bun test",
+    "benchmark": "bun run scripts/benchmark.ts",
+    "example": "bun run src/examples/main.ts"
+  },
+  "keywords": [
+    "bun",
+    "worker-pool",
+    "workers",
+    "multithreading",
+    "concurrency",
+    "performance"
+  ],
+  "author": "laurohms",
+  "license": "MIT",
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
