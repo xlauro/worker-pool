@@ -1,6 +1,6 @@
 {
   "name": "@laurohms/fast-worker-pool",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A high-performance asynchronous Worker Pool for the Bun runtime, managing CPU-intensive tasks in parallel using native Web Workers.",
   "type": "module",
   "main": "src/worker-pool.ts",
